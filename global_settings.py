@@ -1,3 +1,3 @@
 import os
 
-DATA_PATH = r'C:\Users\Kunal\Desktop\code\data'
+DATA_PATH = r'C:\Users\Kunal\code\data'
