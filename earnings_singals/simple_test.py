@@ -20,19 +20,29 @@ def get_ea_signal():
 def get_sorts(n_bins=10):
     bmo_ser, amc_ser = get_ea_signal()
 
-    bmo_res = get_signal_sorts(bmo_ser, 'adj_open', 'adj_close', n_bins=n_bins)
-    amc_res = get_signal_sorts(amc_ser, 'next_adj_open', 'next_adj_close', n_bins=n_bins)
+    bmo_ser, bmo_ret = get_signal_sers(bmo_ser, 'adj_open', 'adj_close')
+    amc_ser, amc_ret = get_signal_sers(amc_ser, 'next_adj_open', 'next_adj_close')
 
-    return bmo_res, amc_res
+    bmo_res = check_res(bmo_ser, bmo_ret, n_bins=n_bins)
+    amc_res = check_res(amc_ser, amc_ret, n_bins=n_bins)
+    combined_res = check_res(bmo_ser.combine_first(amc_ser), bmo_ret.combine_first(amc_ret), n_bins=n_bins)
+
+    return bmo_res, amc_res, combined_res
 
 
-
-
-def get_signal_sorts(signal_ser, from_col, to_col, n_bins=10):
+def get_signal_sers(signal_ser, from_col, to_col):
     price_df = price_utils.get_useful_price_df().set_index(['ticker', 'date'])
-    price_df['signal_ret'] = (price_df[to_col] / price_df[from_col]) - 1
+    signal_ret = (price_df[to_col] / price_df[from_col]) - 1
 
-    price_df['signal_ser'] = pd.qcut(signal_ser, n_bins)
+    return signal_ser, signal_ret
+
+
+def check_res(signal_ser, signal_ret, n_bins=10):
+    signal_ser = pd.qcut(signal_ser, n_bins)
+
+    price_df = price_utils.get_useful_price_df().set_index(['ticker', 'date'])
+    price_df['signal_ser'] = signal_ser
+    price_df['signal_ret'] = signal_ret
 
     signal_grp = price_df.groupby('signal_ser')['signal_ret']
     grp_mean = signal_grp.mean()
@@ -41,4 +51,3 @@ def get_signal_sorts(signal_ser, from_col, to_col, n_bins=10):
     grp_tsat = (grp_mean / grp_std) * grp_count.pow(1./2)
 
     return pd.DataFrame({'Mean': grp_mean, 'Std': grp_std, 'T-Stat': grp_tsat, 'Count': grp_count})
-
